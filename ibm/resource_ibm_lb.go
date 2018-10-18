@@ -267,6 +267,12 @@ func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Partial(false)
+	if d.Get("ssl_enabled").(bool) && certID != 0 {
+		err = startSsl(sess, vipID)
+		if err != nil {
+			return fmt.Errorf("Error starting SSL: %s", err)
+		}
+	}
 	return resourceIBMLbRead(d, meta)
 }
 
@@ -443,6 +449,24 @@ func setLocalLBSecurityCert(sess *session.Session, vipID int, certID int) error 
 
 	if !success && err == nil {
 		return fmt.Errorf("Unable to remove ssl security certificate from load balancer")
+	}
+
+	return err
+}
+
+func startSsl(sess *session.Session, vipID int) error {
+	var success bool
+
+	err := sess.DoRequest(
+		"SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress",
+		"startSsl",
+		nil,
+		&sl.Options{Id: &vipID},
+		&success,
+	)
+
+	if !success && err == nil {
+		return fmt.Errorf("Unable to start SSL ssl on load balancer")
 	}
 
 	return err
